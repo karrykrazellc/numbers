@@ -2,6 +2,7 @@ const STORAGE_KEY = "number-logger-list-v1";
 
 const addForm = document.querySelector("#addForm");
 const phoneInput = document.querySelector("#phoneInput");
+const removeByInputBtn = document.querySelector("#removeByInputBtn");
 const statusText = document.querySelector("#statusText");
 const numbersList = document.querySelector("#numbersList");
 const copyBtn = document.querySelector("#copyBtn");
@@ -36,16 +37,8 @@ function renderList() {
   numbers.forEach((number) => {
     const fragment = numberItemTemplate.content.cloneNode(true);
     const textElement = fragment.querySelector(".number-text");
-    const removeButton = fragment.querySelector(".remove-btn");
 
     textElement.textContent = number;
-    removeButton.addEventListener("click", () => {
-      numbers = numbers.filter((entry) => entry !== number);
-      saveNumbers();
-      renderList();
-      setStatus("Number removed.");
-    });
-
     numbersList.appendChild(fragment);
   });
 }
@@ -100,6 +93,26 @@ addForm.addEventListener("submit", (event) => {
   phoneInput.value = "";
   phoneInput.focus();
   setStatus("Number added.");
+});
+
+removeByInputBtn.addEventListener("click", () => {
+  const numberToRemove = sanitizeNumber(phoneInput.value);
+  if (!numberToRemove) {
+    setStatus("Paste or type a number to remove.", true);
+    return;
+  }
+
+  if (!numbers.includes(numberToRemove)) {
+    setStatus("That number is not in the list.", true);
+    return;
+  }
+
+  numbers = numbers.filter((entry) => entry !== numberToRemove);
+  saveNumbers();
+  renderList();
+  phoneInput.value = "";
+  phoneInput.focus();
+  setStatus("Number removed.");
 });
 
 copyBtn.addEventListener("click", async () => {
