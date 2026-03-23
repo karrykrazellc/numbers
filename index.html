@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Number Logger" />
+    <title>Number Logger</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <main class="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 pb-8 pt-6 sm:px-6">
+      <header class="mb-6">
+        <h1 class="text-2xl font-semibold tracking-tight">Number Logger</h1>
+        <p class="mt-1 text-sm text-slate-400">Add, remove, and copy your phone number list.</p>
+      </header>
+
+      <section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+        <label for="phoneInput" class="mb-2 block text-sm font-medium text-slate-200">Phone number</label>
+        <form id="addForm" class="flex flex-col gap-3 sm:flex-row">
+          <input
+            id="phoneInput"
+            name="phoneInput"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="e.g. 555-123-4567"
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-base text-slate-100 outline-none ring-indigo-500 transition focus:ring"
+          />
+          <button
+            type="submit"
+            class="rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 active:bg-indigo-600"
+          >
+            Add
+          </button>
+        </form>
+        <p id="statusText" class="mt-2 min-h-5 text-xs text-slate-400"></p>
+      </section>
+
+      <section class="mt-4 flex items-center justify-between">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-300">Saved numbers</h2>
+        <button
+          id="copyBtn"
+          type="button"
+          class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+        >
+          Copy all
+        </button>
+      </section>
+
+      <ul id="numbersList" class="mt-3 flex flex-1 flex-col gap-2"></ul>
+
+      <template id="numberItemTemplate">
+        <li class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5">
+          <span class="number-text break-all text-sm sm:text-base"></span>
+          <button
+            type="button"
+            class="remove-btn ml-3 shrink-0 rounded-lg border border-rose-400/30 px-2.5 py-1 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/10"
+          >
+            Remove
+          </button>
+        </li>
+      </template>
+
+      <footer class="mt-6 text-center text-xs text-slate-500">
+        On iPhone: tap Share → Add to Home Screen for app-style launch.
+      </footer>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
