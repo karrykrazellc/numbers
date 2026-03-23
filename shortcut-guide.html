@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>iPhone Shortcut Setup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <main class="mx-auto w-full max-w-2xl px-4 pb-10 pt-6 sm:px-6">
+      <a href="index.html" class="text-sm text-indigo-300 hover:text-indigo-200">← Back to Number Logger</a>
+      <h1 class="mt-4 text-2xl font-semibold tracking-tight">iPhone Shortcut Setup</h1>
+      <p class="mt-2 text-sm text-slate-300">
+        iOS does not allow a website to silently install a shortcut. Tap the button below to open Shortcuts, then build this once.
+      </p>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <a
+          href="shortcuts://"
+          class="rounded-lg bg-indigo-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400"
+        >
+          Open Shortcuts App
+        </a>
+      </div>
+
+      <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+        <h2 class="text-lg font-semibold">Build the shortcut</h2>
+        <ol class="mt-3 list-decimal space-y-3 pl-5 text-sm text-slate-200">
+          <li>Create a new shortcut named <span class="font-semibold">Mass Reach Sender</span>.</li>
+          <li>
+            Add <span class="font-semibold">Find Notes</span>:
+            <ul class="mt-1 list-disc pl-5 text-slate-300">
+              <li>Filter: Name contains <span class="font-semibold">MASS GM</span></li>
+              <li>Sort: Last Modified (Latest First)</li>
+              <li>Limit: 1</li>
+            </ul>
+          </li>
+          <li>
+            Add <span class="font-semibold">Get Details of Notes</span> → Detail: Body.
+          </li>
+          <li>
+            Add <span class="font-semibold">Split Text</span> by New Lines, then set variable <span class="font-semibold">gmLines</span>.
+          </li>
+          <li>
+            Add another <span class="font-semibold">Find Notes</span>:
+            <ul class="mt-1 list-disc pl-5 text-slate-300">
+              <li>Filter: Name contains <span class="font-semibold">FINAL NUMBERS</span></li>
+              <li>Sort: Last Modified (Latest First)</li>
+              <li>Limit: 1</li>
+            </ul>
+          </li>
+          <li>Add <span class="font-semibold">Get Details of Notes</span> → Body.</li>
+          <li>
+            Add <span class="font-semibold">Split Text</span> by New Lines, then set variable <span class="font-semibold">numberLines</span>.
+          </li>
+          <li>
+            Add <span class="font-semibold">Repeat with each</span> item in <span class="font-semibold">numberLines</span>:
+            <ul class="mt-1 list-disc pl-5 text-slate-300">
+              <li>Get random item from <span class="font-semibold">gmLines</span> → variable <span class="font-semibold">messageText</span></li>
+              <li>Use Reach app action (if available) to send <span class="font-semibold">messageText</span> to Repeat Item</li>
+              <li>If Reach has no shortcut action, use <span class="font-semibold">Open App (Reach)</span> and paste/send manually</li>
+            </ul>
+          </li>
+        </ol>
+      </section>
+
+      <p class="mt-4 text-xs text-slate-400">
+        Only message people who opted in and follow carrier/app anti-spam rules.
+      </p>
+    </main>
+  </body>
+</html>
