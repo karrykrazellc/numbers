@@ -1,11 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-const STORAGE_KEY = "number-logger-list-v1";
 const TABLE_NAME = "phone_numbers";
 const SUPABASE_URL = "https://worvqswzdixjgwtjqtub.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_UHZzKrmliMbxipgaCgI3rA__BAtuVUW";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  global: {
+    fetch: (input, init = {}) => {
+      return fetch(input, { ...init, cache: "no-store" });
+    },
+  },
+});
 
 const addForm = document.querySelector("#addForm");
 const phoneInput = document.querySelector("#phoneInput");
@@ -65,27 +70,6 @@ function parseCommandText(value) {
   return { action: null, number: normalizePhoneNumber(cleaned) };
 }
 
-function setNumbersCache(nextNumbers) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextNumbers));
-}
-
-function getCachedNumbers() {
-  const fromStorage = localStorage.getItem(STORAGE_KEY);
-  if (!fromStorage) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(fromStorage);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return Array.from(new Set(parsed.map((value) => normalizePhoneNumber(String(value))).filter(Boolean)));
-  } catch {
-    return [];
-  }
-}
-
 function getSupabaseErrorMessage(error) {
   if (!error) {
     return "Unknown error.";
@@ -122,8 +106,22 @@ async function getNumberFromClipboardOrInput() {
   return { value: "", source: "none" };
 }
 
-function saveNumbers() {
-  setNumbersCache(numbers);
+async function disableBrowserCaching() {
+  if ("serviceWorker" in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    } catch {
+    }
+  }
+
+  if ("caches" in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    } catch {
+    }
+  }
 }
 
 async function addNumberToList(number) {
@@ -139,7 +137,6 @@ async function addNumberToList(number) {
   }
 
   numbers.unshift(number);
-  saveNumbers();
   renderList();
   return true;
 }
@@ -157,7 +154,6 @@ async function removeNumberFromList(number) {
   }
 
   numbers = numbers.filter((entry) => entry !== number);
-  saveNumbers();
   renderList();
   return true;
 }
@@ -173,19 +169,6 @@ async function fetchNumbersFromSupabase() {
   }
 
   numbers = Array.from(new Set((data || []).map((row) => normalizePhoneNumber(row.phone)).filter(Boolean)));
-  saveNumbers();
-}
-
-async function syncCachedNumbersToSupabase(cachedNumbers) {
-  if (cachedNumbers.length === 0) {
-    return;
-  }
-
-  const payload = cachedNumbers.map((phone) => ({ phone }));
-  const { error } = await supabase.from(TABLE_NAME).upsert(payload, { onConflict: "phone" });
-  if (error) {
-    throw error;
-  }
 }
 
 async function runAutoCommandOnLoad() {
@@ -251,22 +234,13 @@ function renderList() {
 }
 
 async function loadInitialData() {
-  const cachedNumbers = getCachedNumbers();
-
   try {
     await fetchNumbersFromSupabase();
-
-    if (numbers.length === 0 && cachedNumbers.length > 0) {
-      await syncCachedNumbersToSupabase(cachedNumbers);
-      await fetchNumbersFromSupabase();
-      setStatus("Local numbers synced to Supabase.");
-    } else {
-      setStatus("Loaded from Supabase.");
-    }
+    setStatus("Loaded from Supabase.");
   } catch (error) {
-    numbers = cachedNumbers;
+    numbers = [];
     renderList();
-    setStatus(`${getSupabaseErrorMessage(error)} Using local cache only.`, true);
+    setStatus(getSupabaseErrorMessage(error), true);
   }
 }
 
@@ -324,14 +298,7 @@ copyBtn.addEventListener("click", async () => {
   }
 });
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {
-      setStatus("Offline support could not be enabled.", true);
-    });
-  });
-}
-
+await disableBrowserCaching();
 await loadInitialData();
 renderList();
 await runAutoCommandOnLoad();
