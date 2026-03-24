@@ -1,4 +1,11 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
 const STORAGE_KEY = "number-logger-list-v1";
+const TABLE_NAME = "phone_numbers";
+const SUPABASE_URL = "https://worvqswzdixjgwtjqtub.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_UHZzKrmliMbxipgaCgI3rA__BAtuVUW";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const addForm = document.querySelector("#addForm");
 const phoneInput = document.querySelector("#phoneInput");
@@ -58,6 +65,43 @@ function parseCommandText(value) {
   return { action: null, number: normalizePhoneNumber(cleaned) };
 }
 
+function setNumbersCache(nextNumbers) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextNumbers));
+}
+
+function getCachedNumbers() {
+  const fromStorage = localStorage.getItem(STORAGE_KEY);
+  if (!fromStorage) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(fromStorage);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return Array.from(new Set(parsed.map((value) => normalizePhoneNumber(String(value))).filter(Boolean)));
+  } catch {
+    return [];
+  }
+}
+
+function getSupabaseErrorMessage(error) {
+  if (!error) {
+    return "Unknown error.";
+  }
+
+  if (error.code === "42P01") {
+    return "Supabase table missing. Run supabase.sql in your Supabase SQL Editor.";
+  }
+
+  if (error.code === "42501") {
+    return "Supabase permissions blocked. Apply the RLS policies from supabase.sql.";
+  }
+
+  return error.message || "Supabase request failed.";
+}
+
 async function getNumberFromClipboardOrInput() {
   if (navigator.clipboard?.readText) {
     try {
@@ -79,12 +123,18 @@ async function getNumberFromClipboardOrInput() {
 }
 
 function saveNumbers() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(numbers));
+  setNumbersCache(numbers);
 }
 
-function addNumberToList(number) {
+async function addNumberToList(number) {
   if (numbers.includes(number)) {
     setStatus("That number is already in the list.", true);
+    return false;
+  }
+
+  const { error } = await supabase.from(TABLE_NAME).insert({ phone: number });
+  if (error && error.code !== "23505") {
+    setStatus(getSupabaseErrorMessage(error), true);
     return false;
   }
 
@@ -94,9 +144,15 @@ function addNumberToList(number) {
   return true;
 }
 
-function removeNumberFromList(number) {
+async function removeNumberFromList(number) {
   if (!numbers.includes(number)) {
     setStatus("That number is not in the list.", true);
+    return false;
+  }
+
+  const { error } = await supabase.from(TABLE_NAME).delete().eq("phone", number);
+  if (error) {
+    setStatus(getSupabaseErrorMessage(error), true);
     return false;
   }
 
@@ -104,6 +160,32 @@ function removeNumberFromList(number) {
   saveNumbers();
   renderList();
   return true;
+}
+
+async function fetchNumbersFromSupabase() {
+  const { data, error } = await supabase
+    .from(TABLE_NAME)
+    .select("phone,created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  numbers = Array.from(new Set((data || []).map((row) => normalizePhoneNumber(row.phone)).filter(Boolean)));
+  saveNumbers();
+}
+
+async function syncCachedNumbersToSupabase(cachedNumbers) {
+  if (cachedNumbers.length === 0) {
+    return;
+  }
+
+  const payload = cachedNumbers.map((phone) => ({ phone }));
+  const { error } = await supabase.from(TABLE_NAME).upsert(payload, { onConflict: "phone" });
+  if (error) {
+    throw error;
+  }
 }
 
 async function runAutoCommandOnLoad() {
@@ -115,8 +197,8 @@ async function runAutoCommandOnLoad() {
   if (commandFromUrl.action && commandFromUrl.number) {
     const success =
       commandFromUrl.action === "add"
-        ? addNumberToList(commandFromUrl.number)
-        : removeNumberFromList(commandFromUrl.number);
+        ? await addNumberToList(commandFromUrl.number)
+        : await removeNumberFromList(commandFromUrl.number);
 
     if (success) {
       setStatus(commandFromUrl.action === "add" ? "Auto-added from shortcut link." : "Auto-removed from shortcut link.");
@@ -138,8 +220,8 @@ async function runAutoCommandOnLoad() {
 
     const success =
       commandFromClipboard.action === "add"
-        ? addNumberToList(commandFromClipboard.number)
-        : removeNumberFromList(commandFromClipboard.number);
+        ? await addNumberToList(commandFromClipboard.number)
+        : await removeNumberFromList(commandFromClipboard.number);
 
     if (success) {
       setStatus(commandFromClipboard.action === "add" ? "Auto-added from clipboard command." : "Auto-removed from clipboard command.");
@@ -169,32 +251,22 @@ function renderList() {
 }
 
 async function loadInitialData() {
-  const fromStorage = localStorage.getItem(STORAGE_KEY);
-
-  if (fromStorage) {
-    try {
-      const parsed = JSON.parse(fromStorage);
-      if (Array.isArray(parsed)) {
-        numbers = Array.from(new Set(parsed.map((value) => normalizePhoneNumber(String(value))).filter(Boolean)));
-        return;
-      }
-    } catch {
-      setStatus("Saved data was invalid. Starting fresh.", true);
-    }
-  }
+  const cachedNumbers = getCachedNumbers();
 
   try {
-    const response = await fetch("numbers.json", { cache: "no-store" });
-    if (!response.ok) {
-      return;
+    await fetchNumbersFromSupabase();
+
+    if (numbers.length === 0 && cachedNumbers.length > 0) {
+      await syncCachedNumbersToSupabase(cachedNumbers);
+      await fetchNumbersFromSupabase();
+      setStatus("Local numbers synced to Supabase.");
+    } else {
+      setStatus("Loaded from Supabase.");
     }
-    const parsed = await response.json();
-    if (Array.isArray(parsed)) {
-      numbers = Array.from(new Set(parsed.map((value) => normalizePhoneNumber(String(value))).filter(Boolean)));
-      saveNumbers();
-    }
-  } catch {
-    setStatus("Could not load starter JSON. You can still add numbers.", true);
+  } catch (error) {
+    numbers = cachedNumbers;
+    renderList();
+    setStatus(`${getSupabaseErrorMessage(error)} Using local cache only.`, true);
   }
 }
 
@@ -209,7 +281,7 @@ addForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const added = addNumberToList(nextNumber);
+  const added = await addNumberToList(nextNumber);
   if (!added) {
     return;
   }
@@ -228,7 +300,7 @@ removeByInputBtn.addEventListener("click", async () => {
     return;
   }
 
-  const removed = removeNumberFromList(numberToRemove);
+  const removed = await removeNumberFromList(numberToRemove);
   if (!removed) {
     return;
   }
