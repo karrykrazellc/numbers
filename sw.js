@@ -1,5 +1,5 @@
-const CACHE_NAME = "number-logger-cache-v1";
-const ASSETS = ["./", "./index.html", "./app.js", "./numbers.json", "./manifest.webmanifest"];
+const CACHE_NAME = "number-logger-cache-v2";
+const ASSETS = ["./", "./index.html", "./shortcut-guide.html", "./app.js", "./numbers.json", "./manifest.webmanifest", "./styles.css"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -27,6 +27,11 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.protocol !== "http:" && requestUrl.protocol !== "https:") {
     return;
   }
 

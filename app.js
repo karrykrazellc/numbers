@@ -107,8 +107,10 @@ function removeNumberFromList(number) {
 }
 
 async function runAutoCommandOnLoad() {
+  const rawCmdMatch = window.location.search.match(/[?&]cmd=([^&]+)/);
+  const rawCmdValue = rawCmdMatch ? decodeURIComponent(rawCmdMatch[1]) : "";
   const params = new URLSearchParams(window.location.search);
-  const commandFromUrl = parseCommandText(params.get("cmd") || "");
+  const commandFromUrl = parseCommandText(rawCmdValue || params.get("cmd") || "");
 
   if (commandFromUrl.action && commandFromUrl.number) {
     const success =
