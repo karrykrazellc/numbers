@@ -19,6 +19,25 @@ function sanitizeNumber(value) {
   return value.trim();
 }
 
+async function getNumberFromClipboardOrInput() {
+  if (navigator.clipboard?.readText) {
+    try {
+      const clipboardText = sanitizeNumber(await navigator.clipboard.readText());
+      if (clipboardText) {
+        return { value: clipboardText, source: "clipboard" };
+      }
+    } catch {
+    }
+  }
+
+  const inputText = sanitizeNumber(phoneInput.value);
+  if (inputText) {
+    return { value: inputText, source: "input" };
+  }
+
+  return { value: "", source: "none" };
+}
+
 function saveNumbers() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(numbers));
 }
@@ -73,12 +92,14 @@ async function loadInitialData() {
   }
 }
 
-addForm.addEventListener("submit", (event) => {
+addForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const nextNumber = sanitizeNumber(phoneInput.value);
+  const candidate = await getNumberFromClipboardOrInput();
+  const nextNumber = candidate.value;
+
   if (!nextNumber) {
-    setStatus("Enter a phone number first.", true);
+    setStatus("Copy a number first or type one in the box.", true);
     return;
   }
 
@@ -92,13 +113,15 @@ addForm.addEventListener("submit", (event) => {
   renderList();
   phoneInput.value = "";
   phoneInput.focus();
-  setStatus("Number added.");
+  setStatus(candidate.source === "clipboard" ? "Number added from clipboard." : "Number added.");
 });
 
-removeByInputBtn.addEventListener("click", () => {
-  const numberToRemove = sanitizeNumber(phoneInput.value);
+removeByInputBtn.addEventListener("click", async () => {
+  const candidate = await getNumberFromClipboardOrInput();
+  const numberToRemove = candidate.value;
+
   if (!numberToRemove) {
-    setStatus("Paste or type a number to remove.", true);
+    setStatus("Copy a number first or type one to remove.", true);
     return;
   }
 
@@ -112,7 +135,7 @@ removeByInputBtn.addEventListener("click", () => {
   renderList();
   phoneInput.value = "";
   phoneInput.focus();
-  setStatus("Number removed.");
+  setStatus(candidate.source === "clipboard" ? "Number removed from clipboard." : "Number removed.");
 });
 
 copyBtn.addEventListener("click", async () => {
