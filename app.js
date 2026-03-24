@@ -19,20 +19,38 @@ function sanitizeNumber(value) {
   return value.trim();
 }
 
+function parseCommandText(value) {
+  const cleaned = sanitizeNumber(value);
+  if (!cleaned) {
+    return { action: null, number: "" };
+  }
+
+  if (cleaned.startsWith("+")) {
+    return { action: "add", number: sanitizeNumber(cleaned.slice(1)) };
+  }
+
+  if (cleaned.startsWith("-")) {
+    return { action: "remove", number: sanitizeNumber(cleaned.slice(1)) };
+  }
+
+  return { action: null, number: cleaned };
+}
+
 async function getNumberFromClipboardOrInput() {
   if (navigator.clipboard?.readText) {
     try {
-      const clipboardText = sanitizeNumber(await navigator.clipboard.readText());
-      if (clipboardText) {
-        return { value: clipboardText, source: "clipboard" };
+      const clipboardText = await navigator.clipboard.readText();
+      const parsed = parseCommandText(clipboardText);
+      if (parsed.number) {
+        return { value: parsed.number, source: "clipboard" };
       }
     } catch {
     }
   }
 
-  const inputText = sanitizeNumber(phoneInput.value);
-  if (inputText) {
-    return { value: inputText, source: "input" };
+  const parsedInput = parseCommandText(phoneInput.value);
+  if (parsedInput.number) {
+    return { value: parsedInput.number, source: "input" };
   }
 
   return { value: "", source: "none" };
@@ -40,6 +58,70 @@ async function getNumberFromClipboardOrInput() {
 
 function saveNumbers() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(numbers));
+}
+
+function addNumberToList(number) {
+  if (numbers.includes(number)) {
+    setStatus("That number is already in the list.", true);
+    return false;
+  }
+
+  numbers.unshift(number);
+  saveNumbers();
+  renderList();
+  return true;
+}
+
+function removeNumberFromList(number) {
+  if (!numbers.includes(number)) {
+    setStatus("That number is not in the list.", true);
+    return false;
+  }
+
+  numbers = numbers.filter((entry) => entry !== number);
+  saveNumbers();
+  renderList();
+  return true;
+}
+
+async function runAutoCommandOnLoad() {
+  const params = new URLSearchParams(window.location.search);
+  const commandFromUrl = parseCommandText(params.get("cmd") || "");
+
+  if (commandFromUrl.action && commandFromUrl.number) {
+    const success =
+      commandFromUrl.action === "add"
+        ? addNumberToList(commandFromUrl.number)
+        : removeNumberFromList(commandFromUrl.number);
+
+    if (success) {
+      setStatus(commandFromUrl.action === "add" ? "Auto-added from shortcut link." : "Auto-removed from shortcut link.");
+    }
+    window.history.replaceState({}, "", window.location.pathname);
+    return;
+  }
+
+  if (!navigator.clipboard?.readText) {
+    return;
+  }
+
+  try {
+    const clipboardText = await navigator.clipboard.readText();
+    const commandFromClipboard = parseCommandText(clipboardText);
+    if (!commandFromClipboard.action || !commandFromClipboard.number) {
+      return;
+    }
+
+    const success =
+      commandFromClipboard.action === "add"
+        ? addNumberToList(commandFromClipboard.number)
+        : removeNumberFromList(commandFromClipboard.number);
+
+    if (success) {
+      setStatus(commandFromClipboard.action === "add" ? "Auto-added from clipboard command." : "Auto-removed from clipboard command.");
+    }
+  } catch {
+  }
 }
 
 function renderList() {
@@ -103,14 +185,11 @@ addForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (numbers.includes(nextNumber)) {
-    setStatus("That number is already in the list.", true);
+  const added = addNumberToList(nextNumber);
+  if (!added) {
     return;
   }
 
-  numbers.unshift(nextNumber);
-  saveNumbers();
-  renderList();
   phoneInput.value = "";
   phoneInput.focus();
   setStatus(candidate.source === "clipboard" ? "Number added from clipboard." : "Number added.");
@@ -125,14 +204,11 @@ removeByInputBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (!numbers.includes(numberToRemove)) {
-    setStatus("That number is not in the list.", true);
+  const removed = removeNumberFromList(numberToRemove);
+  if (!removed) {
     return;
   }
 
-  numbers = numbers.filter((entry) => entry !== numberToRemove);
-  saveNumbers();
-  renderList();
   phoneInput.value = "";
   phoneInput.focus();
   setStatus(candidate.source === "clipboard" ? "Number removed from clipboard." : "Number removed.");
@@ -162,3 +238,4 @@ if ("serviceWorker" in navigator) {
 
 await loadInitialData();
 renderList();
+await runAutoCommandOnLoad();
