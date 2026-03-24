@@ -19,6 +19,28 @@ function sanitizeNumber(value) {
   return value.trim();
 }
 
+function normalizePhoneNumber(value) {
+  const cleaned = sanitizeNumber(value);
+  if (!cleaned) {
+    return "";
+  }
+
+  const digitsOnly = cleaned.replace(/\D/g, "");
+  if (!digitsOnly) {
+    return "";
+  }
+
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+
+  if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
+    return `+${digitsOnly}`;
+  }
+
+  return `+${digitsOnly}`;
+}
+
 function parseCommandText(value) {
   const cleaned = sanitizeNumber(value);
   if (!cleaned) {
@@ -26,14 +48,14 @@ function parseCommandText(value) {
   }
 
   if (cleaned.startsWith("+")) {
-    return { action: "add", number: sanitizeNumber(cleaned.slice(1)) };
+    return { action: "add", number: normalizePhoneNumber(cleaned.slice(1)) };
   }
 
   if (cleaned.startsWith("-")) {
-    return { action: "remove", number: sanitizeNumber(cleaned.slice(1)) };
+    return { action: "remove", number: normalizePhoneNumber(cleaned.slice(1)) };
   }
 
-  return { action: null, number: cleaned };
+  return { action: null, number: normalizePhoneNumber(cleaned) };
 }
 
 async function getNumberFromClipboardOrInput() {
@@ -151,7 +173,7 @@ async function loadInitialData() {
     try {
       const parsed = JSON.parse(fromStorage);
       if (Array.isArray(parsed)) {
-        numbers = parsed;
+        numbers = Array.from(new Set(parsed.map((value) => normalizePhoneNumber(String(value))).filter(Boolean)));
         return;
       }
     } catch {
@@ -166,7 +188,7 @@ async function loadInitialData() {
     }
     const parsed = await response.json();
     if (Array.isArray(parsed)) {
-      numbers = parsed.map((value) => String(value).trim()).filter(Boolean);
+      numbers = Array.from(new Set(parsed.map((value) => normalizePhoneNumber(String(value))).filter(Boolean)));
       saveNumbers();
     }
   } catch {
