@@ -16,38 +16,16 @@ const addForm = document.querySelector("#addForm");
 const phoneInput = document.querySelector("#phoneInput");
 const removeByInputBtn = document.querySelector("#removeByInputBtn");
 const statusText = document.querySelector("#statusText");
-const actionBanner = document.querySelector("#actionBanner");
 const numbersList = document.querySelector("#numbersList");
 const refreshBtn = document.querySelector("#refreshBtn");
 const copyBtn = document.querySelector("#copyBtn");
 const numberItemTemplate = document.querySelector("#numberItemTemplate");
 
 let numbers = [];
-let actionBannerTimeoutId = null;
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
   statusText.className = `mt-2 min-h-5 text-xs ${isError ? "text-rose-300" : "text-slate-400"}`;
-}
-
-function showActionBanner(message, isError = false) {
-  if (!message) {
-    return;
-  }
-
-  actionBanner.textContent = message;
-  actionBanner.className = `mb-3 rounded-xl border px-3 py-2 text-sm font-semibold ${
-    isError ? "border-rose-500/60 bg-rose-500/10 text-rose-200" : "border-emerald-500/60 bg-emerald-500/10 text-emerald-200"
-  }`;
-
-  if (actionBannerTimeoutId) {
-    clearTimeout(actionBannerTimeoutId);
-  }
-
-  actionBannerTimeoutId = setTimeout(() => {
-    actionBanner.className = "mb-3 hidden rounded-xl border px-3 py-2 text-sm font-semibold";
-    actionBanner.textContent = "";
-  }, 3500);
 }
 
 function sanitizeNumber(value) {
@@ -209,10 +187,9 @@ async function runAutoCommandOnLoad() {
     if (success) {
       const successMessage = commandFromUrl.action === "add" ? "Number added from command link." : "Number removed from command link.";
       setStatus(successMessage);
-      showActionBanner(successMessage);
     } else {
       const failureMessage = commandFromUrl.action === "add" ? "Add command failed." : "Remove command failed.";
-      showActionBanner(failureMessage, true);
+      setStatus(failureMessage, true);
     }
     window.history.replaceState({}, "", window.location.pathname);
     return;
@@ -238,10 +215,9 @@ async function runAutoCommandOnLoad() {
       const successMessage =
         commandFromClipboard.action === "add" ? "Number added from clipboard command." : "Number removed from clipboard command.";
       setStatus(successMessage);
-      showActionBanner(successMessage);
     } else {
       const failureMessage = commandFromClipboard.action === "add" ? "Clipboard add command failed." : "Clipboard remove command failed.";
-      showActionBanner(failureMessage, true);
+      setStatus(failureMessage, true);
     }
   } catch {
   }
