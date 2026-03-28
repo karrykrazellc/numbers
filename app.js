@@ -17,6 +17,7 @@ const phoneInput = document.querySelector("#phoneInput");
 const removeByInputBtn = document.querySelector("#removeByInputBtn");
 const statusText = document.querySelector("#statusText");
 const numbersList = document.querySelector("#numbersList");
+const refreshBtn = document.querySelector("#refreshBtn");
 const copyBtn = document.querySelector("#copyBtn");
 const numberItemTemplate = document.querySelector("#numberItemTemplate");
 
@@ -244,6 +245,24 @@ async function loadInitialData() {
   }
 }
 
+async function refreshFromSupabase() {
+  const originalText = refreshBtn.textContent;
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = "Refreshing...";
+
+  try {
+    await disableBrowserCaching();
+    await fetchNumbersFromSupabase();
+    renderList();
+    setStatus("Refreshed from Supabase.");
+  } catch (error) {
+    setStatus(getSupabaseErrorMessage(error), true);
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = originalText;
+  }
+}
+
 addForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -296,6 +315,10 @@ copyBtn.addEventListener("click", async () => {
   } catch {
     setStatus("Copy failed. Please allow clipboard access.", true);
   }
+});
+
+refreshBtn.addEventListener("click", async () => {
+  await refreshFromSupabase();
 });
 
 await disableBrowserCaching();

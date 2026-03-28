@@ -57,13 +57,22 @@
 
       <section class="mt-4 flex items-center justify-between">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-300">Saved numbers</h2>
-        <button
-          id="copyBtn"
-          type="button"
-          class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
-        >
-          Copy all
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            id="refreshBtn"
+            type="button"
+            class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+          >
+            Refresh
+          </button>
+          <button
+            id="copyBtn"
+            type="button"
+            class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+          >
+            Copy all
+          </button>
+        </div>
       </section>
 
       <ul id="numbersList" class="mt-3 flex flex-1 flex-col gap-2"></ul>
