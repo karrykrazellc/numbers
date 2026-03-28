@@ -15,6 +15,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 const addForm = document.querySelector("#addForm");
 const phoneInput = document.querySelector("#phoneInput");
 const removeByInputBtn = document.querySelector("#removeByInputBtn");
+const searchInput = document.querySelector("#searchInput");
 const statusText = document.querySelector("#statusText");
 const numbersList = document.querySelector("#numbersList");
 const refreshBtn = document.querySelector("#refreshBtn");
@@ -22,6 +23,7 @@ const copyBtn = document.querySelector("#copyBtn");
 const numberItemTemplate = document.querySelector("#numberItemTemplate");
 
 let numbers = [];
+let searchQuery = "";
 
 function setStatus(message, isError = false) {
   statusText.textContent = message;
@@ -69,6 +71,10 @@ function parseCommandText(value) {
   }
 
   return { action: null, number: normalizePhoneNumber(cleaned) };
+}
+
+function normalizeSearchValue(value) {
+  return sanitizeNumber(value).replace(/\D/g, "");
 }
 
 function getSupabaseErrorMessage(error) {
@@ -226,6 +232,11 @@ async function runAutoCommandOnLoad() {
 function renderList() {
   numbersList.innerHTML = "";
 
+  const normalizedQuery = normalizeSearchValue(searchQuery);
+  const visibleNumbers = normalizedQuery
+    ? numbers.filter((number) => number.replace(/\D/g, "").includes(normalizedQuery))
+    : numbers;
+
   if (numbers.length === 0) {
     const emptyState = document.createElement("li");
     emptyState.className = "rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-4 text-sm text-slate-400";
@@ -234,11 +245,28 @@ function renderList() {
     return;
   }
 
-  numbers.forEach((number) => {
+  if (visibleNumbers.length === 0) {
+    const emptySearchState = document.createElement("li");
+    emptySearchState.className = "rounded-xl border border-dashed border-slate-700 bg-slate-900/50 px-3 py-4 text-sm text-slate-400";
+    emptySearchState.textContent = "No matching numbers.";
+    numbersList.appendChild(emptySearchState);
+    return;
+  }
+
+  visibleNumbers.forEach((number) => {
     const fragment = numberItemTemplate.content.cloneNode(true);
     const textElement = fragment.querySelector(".number-text");
+    const removeItemButton = fragment.querySelector(".remove-item-btn");
 
     textElement.textContent = number;
+    removeItemButton.addEventListener("click", async () => {
+      removeItemButton.disabled = true;
+      const removed = await removeNumberFromList(number);
+      if (removed) {
+        setStatus("Number removed.");
+      }
+    });
+
     numbersList.appendChild(fragment);
   });
 }
@@ -328,6 +356,11 @@ copyBtn.addEventListener("click", async () => {
 
 refreshBtn.addEventListener("click", async () => {
   await refreshFromSupabase();
+});
+
+searchInput.addEventListener("input", () => {
+  searchQuery = searchInput.value;
+  renderList();
 });
 
 await disableBrowserCaching();
